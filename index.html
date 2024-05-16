@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>鼠标中间键交互效果</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #f0f0f0;
+        }
+        .menu {
+            position: absolute;
+            display: none;
+            transform: translate(-50%, -50%);
+        }
+        .circle {
+            width: 50px;
+            height: 50px;
+            background-color: #007BFF;
+            border-radius: 50%;
+            position: absolute;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            opacity: 0; /* 初始状态为不可见 */
+        }
+        .circle.no-hover {
+            pointer-events: none; /* 禁用hover效果 */
+        }
+        .circle:hover {
+            background-color: #0056b3;
+        }
+        .circle.red {
+            background-color: red;
+        }
+        .fly-out {
+            animation: flyOut 0.2s forwards, fadeIn 0.2s forwards; /* 0.2s的飞出和逐渐显示动画 */
+        }
+        .fly-in {
+            animation: flyIn 0.2s forwards, fadeOut 0.2s forwards; /* 0.2s的飞入和逐渐隐藏动画 */
+        }
+        @keyframes flyOut {
+            0% { transform: translate(0, 0); }
+            100% { transform: translate(var(--tx), var(--ty)); }
+        }
+        @keyframes flyIn {
+            0% { transform: translate(var(--tx), var(--ty)); }
+            100% { transform: translate(0, 0); }
+        }
+        @keyframes fadeIn {
+            0% { opacity: 0; }
+            100% { opacity: 1; }
+        }
+        @keyframes fadeOut {
+            0% { opacity: 1; }
+            100% { opacity: 0; }
+        }
+        .status {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 18px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="status" id="status">未选中</div>
+    <div class="menu" id="menu">
+        <!-- 五个圆形按钮 -->
+        <div class="circle" id="circle1" style="--tx: 0px; --ty: -100px;">1</div>
+        <div class="circle" id="circle2" style="--tx: 87px; --ty: -50px;">2</div>
+        <div class="circle" id="circle3" style="--tx: 87px; --ty: 50px;">3</div>
+        <div class="circle" id="circle4" style="--tx: 0px; --ty: 100px;">4</div>
+        <div class="circle" id="circle5" style="--tx: -87px; --ty: 50px;">5</div>
+    </div>
+
+    <script>
+        // 获取菜单和所有圆形元素，以及状态显示元素
+        const menu = document.getElementById('menu');
+        const circles = document.querySelectorAll('.circle');
+        const status = document.getElementById('status');
+        let selectedCircle = null;
+        let animationInProgress = false;
+
+        // 监听鼠标按下事件
+        document.body.addEventListener('mousedown', (e) => {
+            if (e.button === 1) { // 判断是否为中间键按下
+                e.preventDefault(); // 阻止默认行为
+                // 显示菜单并设置其位置
+                menu.style.display = 'block';
+                menu.style.left = `${e.clientX}px`;
+                menu.style.top = `${e.clientY}px`;
+                animationInProgress = true;
+                // 触发圆形的飞出动画
+                circles.forEach(circle => {
+                    circle.classList.remove('fly-in');
+                    circle.classList.add('fly-out');
+                    circle.classList.add('no-hover'); // 禁用hover效果
+                });
+                // 等待飞出动画结束后解除禁用hover效果
+                setTimeout(() => {
+                    circles.forEach(circle => {
+                        circle.classList.remove('no-hover');
+                    });
+                    animationInProgress = false;
+                }, 200); // 动画持续时间为200ms
+                // 添加鼠标移动监听器
+                document.addEventListener('mousemove', onMouseMove);
+            }
+        });
+
+        // 监听鼠标抬起事件
+        document.body.addEventListener('mouseup', (e) => {
+            if (e.button === 1) { // 判断是否为中间键抬起
+                document.removeEventListener('mousemove', onMouseMove); // 移除鼠标移动监听器
+                // 触发圆形的飞入动画
+                circles.forEach(circle => {
+                    circle.classList.remove('fly-out');
+                    circle.classList.add('fly-in');
+                    circle.classList.add('no-hover'); // 禁用hover效果
+                });
+                // 动画结束后隐藏菜单并标记选择的圆形
+                setTimeout(() => {
+                    menu.style.display = 'none';
+                    if (selectedCircle) {
+                        circles.forEach(circle => circle.classList.remove('red'));
+                        selectedCircle.classList.add('red');
+                        status.textContent = `第${selectedCircle.textContent}个圆形被选中`;
+                    } else {
+                        status.textContent = '未选中';
+                    }
+                    circles.forEach(circle => {
+                        circle.classList.remove('no-hover'); // 恢复hover效果
+                    });
+                }, 200); // 动画持续时间为200ms
+            }
+        });
+
+        // 处理鼠标移动事件
+        function onMouseMove(e) {
+            if (animationInProgress) return; // 如果动画进行中则直接返回
+            let isOverCircle = false;
+            circles.forEach(circle => {
+                const rect = circle.getBoundingClientRect(); // 获取圆形的位置和尺寸
+                if (e.clientX >= rect.left && e.clientX <= rect.right &&
+                    e.clientY >= rect.top && e.clientY <= rect.bottom) {
+                    isOverCircle = true;
+                    selectedCircle = circle;
+                }
+                circle.classList.toggle('red', isOverCircle && selectedCircle === circle); // 高亮当前悬停的圆形
+            });
+        }
+    </script>
+</body>
+</html>
